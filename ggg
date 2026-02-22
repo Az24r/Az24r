@@ -1,0 +1,133 @@
+const express = require("express");
+const axios = require("axios");
+const bodyParser = require("body-parser");
+
+const app = express();
+app.use(bodyParser.json());
+
+const PORT = 3000;
+
+// 🔑 PUT YOUR AI VIDEO API KEY HERE
+const RUNWAY_API_KEY = "PASTE_YOUR_RUNWAY_KEY_HERE";
+
+// Serve Website
+app.get("/", (req, res) => {
+  res.send(`
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>TrendAI Video Generator</title>
+    <style>
+      body {
+        font-family: Arial;
+        background: #0f0f0f;
+        color: white;
+        text-align: center;
+        padding: 40px;
+      }
+      textarea {
+        width: 80%;
+        height: 120px;
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 8px;
+      }
+      button {
+        padding: 12px 30px;
+        font-size: 18px;
+        margin-top: 20px;
+        background: #ff004f;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      video {
+        margin-top: 30px;
+        width: 80%;
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+
+    <h1>🔥 AI Trendy Video Generator</h1>
+    <p>Create viral YouTube-style animated videos instantly</p>
+
+    <textarea id="prompt" placeholder="Create a viral YouTube short about AI replacing jobs..."></textarea>
+    <br/>
+    <button onclick="generate()">Generate Video</button>
+
+    <p id="status"></p>
+    <video id="video" controls style="display:none;"></video>
+
+    <script>
+      async function generate() {
+        const prompt = document.getElementById("prompt").value;
+        document.getElementById("status").innerText = "Generating... Please wait";
+        
+        const res = await fetch("/generate", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ prompt })
+        });
+
+        const data = await res.json();
+
+        if (data.videoUrl) {
+          document.getElementById("video").src = data.videoUrl;
+          document.getElementById("video").style.display = "block";
+          document.getElementById("status").innerText = "Done!";
+        } else {
+          document.getElementById("status").innerText = "Error generating video.";
+        }
+      }
+    </script>
+
+  </body>
+  </html>
+  `);
+});
+
+// AI Generation Route
+app.post("/generate", async (req, res) => {
+  const { prompt } = req.body;
+
+  try {
+    // Enhance prompt for trendy style
+    const enhancedPrompt = `
+      Create a high-retention viral YouTube video.
+      Fast cuts.
+      Engaging hook in first 3 seconds.
+      Bold captions.
+      Modern editing style.
+      Topic: ${prompt}
+    `;
+
+    const response = await axios.post(
+      "https://api.runwayml.com/v1/generate",
+      {
+        prompt: enhancedPrompt,
+        duration: 10,
+        resolution: "1080p",
+        ratio: "16:9"
+      },
+      {
+        headers: {
+          Authorization: \`Bearer \${RUNWAY_API_KEY}\`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    res.json({ videoUrl: response.data.video_url });
+
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ error: "Video generation failed" });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(\`Server running on http://localhost:\${PORT}\`);
+});
